@@ -1,21 +1,19 @@
 # Erebos
 
+Virtual machine for bootstrapping the basic network services.
+
+## How?
+
+1. TheForeman
+    * Host Discovery + Inventory
+    * DHCP (local) manager 
+    * DNS (local) manager
+    * TFTP (local) manager
+    * Salt state provisioner
+2. SaltStack
+
+## TheForeman
 
 
-## Why?
-
-
-## Pre-Required Services
-
-## Notes
-
-### Network topology
-
-Before there is a network rich of services, you have a bunch of network devices and non functioning, bare-metal, hosts.  
-The code in this repository is intended to be run on your developer machine. This is how you would bootstrap the first 
-stage of your environment.
-
-
-### DHCP
-## Configuration
+## Saltstack
 
