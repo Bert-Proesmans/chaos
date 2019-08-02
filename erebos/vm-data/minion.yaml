@@ -598,7 +598,16 @@ file_roots:
   # Base acts as library for shared states.
   base:
     - /srv/salt/base
-    - /srv/salt/node    
+  setup:
+    - /srv/salt/setup
+
+# Pick a top file by default from the setup environment
+default_top: setup
+
+# Scanning order of salt files between environments
+env_order:
+  - base
+  - setup
 
 # Uncomment the line below if you do not want the file_server to follow
 # symlinks when walking the filesystem tree. This is set to True
@@ -634,9 +643,9 @@ file_roots:
 # The Salt pillar is searched for locally if file_client is set to local. If
 # this is the case, and pillar data is defined, then the pillar_roots need to
 # also be configured on the minion:
-#pillar_roots:
-#  base:
-#    - /srv/pillar
+pillar_roots:
+  base:
+    - /srv/pillar
 
 # Set a hard-limit on the size of the files that can be pushed to the master.
 # It will be interpreted as megabytes. Default: 100
