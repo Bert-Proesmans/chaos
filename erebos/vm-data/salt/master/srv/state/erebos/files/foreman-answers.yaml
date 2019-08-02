@@ -1,6 +1,0 @@
---- Foreman controller
-foreman: true
---- No Puppet master for Foreman controlled minions
-puppet: false
---- Foreman proxy between Foreman controller and minions
-foreman_proxy: true

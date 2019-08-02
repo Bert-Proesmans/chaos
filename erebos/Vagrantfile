@@ -1,83 +1,29 @@
-# -*- mode: ruby -*-
-# vi: set ft=ruby :
-
-# All Vagrant configuration is done below. The "2" in Vagrant.configure
-# configures the configuration version (we support older styles for
-# backwards compatibility). Please don't change it unless you know what
-# you're doing.
 Vagrant.configure("2") do |config|
-  # The most common configuration options are documented and commented below.
-  # For a complete reference, please see the online documentation at
-  # https://docs.vagrantup.com.
+    config.vm.box = "centos/7"
+    config.vm.hostname = 'foreman.stage0.local'
 
-  # Every Vagrant development environment requires a box. You can search for
-  # boxes at https://vagrantcloud.com/search.
-  config.vm.box = "centos/7"
-  config.vm.boot_timeout = 60
-
-  config.vm.define "erebos.local.lan", primary: true do |node|
-    # FQDN of the provisioner machine.
-    node.vm.hostname = "erebos.local.lan"
-    
-    # Bridge the machine onto the hosts network.
-    node.vm.network "public_network"
-
-    # Create a private network, which allows host-only access to the machine
-    # using a specific IP.
-    # NOTE; Used for testing setup with virtualized metal
-    node.vm.network "private_network", ip: "192.168.200.10"
-
-    # Shared folders functionality will automatically pick an intelligent sync type.
-    # On virtualbox provider this is Virtualbox Shared Folders, but that requires 
-    # the VirtualBox Guest Additiions software being installed on the VM!
-    # Force the installation on provision startup using the vagrant-vbguest plugin;
-    #   vagrant plugin install vagrant-vbguest
-
-    # Push state information to the VM
-    node.vm.synced_folder "vm-data/salt/base/", "/srv/salt/base/"
-    node.vm.synced_folder "vm-data/salt/master/srv/pillar/", "/srv/pillar/"
-    node.vm.synced_folder "vm-data/salt/master/srv/state/", "/srv/salt/setup/"
-    # Disable copying CWD
-    node.vm.synced_folder ".", "/vagrant", disabled: true
-
-    # Provisioning with the salt provider causes Salt-Minion to be installed.
-    # The top state file ('/srv/salt/top.sls') is read and applied to the VM.
-    config.vm.provision :salt do |salt|
-      salt.minion_config = "vm-data/minion.yaml"
-      salt.masterless = true
-      salt.run_highstate = true
-      salt.verbose = true
+    # https://www.vagrantup.com/docs/providers/ for information on providers.
+    config.vm.provider "virtualbox" do |vb|
+        vb.memory = "2048"
     end
-  end
 
-  (1..1).each do |i|
-    config.vm.define "node-#{i}.local.lan" do |node|
-      node.vm.hostname = "node-#{i}.local.lan"
-      node.vm.network "private_network", ip: "192.168.200.#{15+i}"
+    # Sync over entire Salt state repository. The minion will run masterless.
+    # https://www.vagrantup.com/docs/synced-folders/ for information on folder sharing.
+    config.vm.synced_folder "salt", "/srv/salt", type: "virtualbox"
+    # Disable default shared folder.
+    config.vm.synced_folder ".", "/vagrant", disabled: true
 
-      # Push state information to the VM
-      node.vm.synced_folder "vm-data/salt/base/", "/srv/salt/base/"
-      node.vm.synced_folder "vm-data/salt/slave/srv/pillar/", "/srv/pillar/"
-      node.vm.synced_folder "vm-data/salt/slave/srv/state/", "/srv/salt/setup/"
-      # Disable copying CWD
-      node.vm.synced_folder ".", "/vagrant", disabled: true
 
-      # Provisioning with the salt provider causes Salt-Minion to be installed.
-      # The top state file ('/srv/salt/top.sls') is read and applied to the VM.
-      config.vm.provision :salt do |salt|
-        salt.minion_config = "vm-data/minion.yaml"
+    # Fixed network address to debug Foreman functionality with other VM's.
+    config.vm.network "private_network", ip: "192.168.200.10"
+    # Bridge to the Host connected network, to provision other bare metal.
+    # config.vm.network "public_network"
+
+    # https://www.vagrantup.com/docs/provisioning/ for information on VM provisioning.
+    config.vm.provision :salt do |salt|
+        salt.install_type = "stable"
+        salt.minion_config = "salt/minion.conf.yaml"
         salt.masterless = true
         salt.run_highstate = true
-        salt.verbose = true
-      end
     end
-  end
-  
-  config.vm.provider "virtualbox" do |vb|
-   # Display the VirtualBox GUI when booting the machine
-   vb.gui = true
-  
-    # Customize the amount of memory on the VM:
-   vb.memory = "2048"
-  end
 end
