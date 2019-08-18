@@ -1,29 +1,100 @@
 Vagrant.configure("2") do |config|
-    config.vm.box = "centos/7"
-    config.vm.hostname = 'foreman.stage0.local'
+    os_box = "centos/7"
+    subnet = "192.168.200"
 
-    # https://www.vagrantup.com/docs/providers/ for information on providers.
-    config.vm.provider "virtualbox" do |vb|
-        vb.memory = "2048"
+    config.vm.define :master, primary: true do |master|
+        master.vm.provider "virtualbox" do |vb|
+            vb.memory = "1024"
+            vb.cpus = 1
+            vb.name = "salt-master"
+            # Show vm window for debugging purposes
+            vb.gui = true
+        end
+
+        master.vm.box = "#{os_box}"
+        master.vm.hostname = "saltmaster.stage0.local"
+        master.vm.network "private_network", ip:"#{subnet}.10"
+
+        # Sync state configuration files.
+        master.vm.synced_folder "saltstack/salt/", "/srv/salt", type: "virtualbox"
+        master.vm.synced_folder "saltstack/pillar/", "/srv/pillar", type: "virtualbox"
+        master.vm.synced_folder ".", "/vagrant", disabled: true
+
+        # Copy administration configuration.
+        master.vm.provision "file", source: "saltstack/grains/grains.yaml", destination: "/tmp/salt/grains"
+        master.vm.provision "file", source: "saltstack/grains/accept_deployment.yaml", destination: "/tmp/salt/autosign_grains/deployment"
+        # WARN; SCP program that copies files into vm doesn't have SUDO capabilities
+        master.vm.provision "shell" do |s|
+            s.inline = <<-SCRIPT
+            [ ! -d "/etc/salt" ] && mkdir "/etc/salt"
+            [ ! -d "/etc/salt/autosign_grains" ] && mkdir "/etc/salt/autosign_grains"
+            cp "/tmp/salt/grains" "/etc/salt/grains"
+            cp "/tmp/salt/autosign_grains/deployment" "/etc/salt/autosign_grains/deployment"
+            SCRIPT
+            s.privileged = true
+        end
+
+        master.vm.provision :salt do |salt|
+            # NOTE; The master becomes a minion of itself!
+            salt.master_config = "saltstack/configurations/master_conf.yaml"
+            salt.minion_config = "saltstack/configurations/master_minion_conf.yaml"
+
+            # TODO; Proper setup would require key preseeding, but we're using automatic minion
+            # approval filtered on grains.
+
+            salt.install_type = "stable"
+            salt.install_master = true
+            salt.no_minion = false
+            salt.verbose = true
+            salt.colorize = true
+            salt.bootstrap_options = "-D"
+            # TODO Run automatic provisioning (requires pre-seeded minions)
+            # salt.run_highstate = true
+        end       
     end
 
-    # Sync over entire Salt state repository. The minion will run masterless.
-    # https://www.vagrantup.com/docs/synced-folders/ for information on folder sharing.
-    config.vm.synced_folder "salt", "/srv/salt", type: "virtualbox"
-    # Disable default shared folder.
-    config.vm.synced_folder ".", "/vagrant", disabled: true
+    # Configure all minion machines.
+    [
+        ["minion1", "#{subnet}.11", "1024", os_box],
+    ].each do |vmname,ip,memory,box|
+        config.vm.define "#{vmname}" do |minion| 
+            minion.vm.provider "virtualbox" do |vb|
+                vb.memory = "#{memory}"
+                vb.cpus = 1
+                vb.name = "#{vmname}"
+                # Show vm window for debugging purposes
+                vb.gui = true
+            end
 
+            minion.vm.box = "#{box}"
+            minion.vm.hostname = "#{vmname}.stage0.local"
+            minion.vm.network "private_network", ip: "#{ip}"
 
-    # Fixed network address to debug Foreman functionality with other VM's.
-    config.vm.network "private_network", ip: "192.168.200.10"
-    # Bridge to the Host connected network, to provision other bare metal.
-    # config.vm.network "public_network"
+            minion.vm.synced_folder ".", "/vagrant", disabled: true
 
-    # https://www.vagrantup.com/docs/provisioning/ for information on VM provisioning.
-    config.vm.provision :salt do |salt|
-        salt.install_type = "stable"
-        salt.minion_config = "salt/minion.conf.yaml"
-        salt.masterless = true
-        salt.run_highstate = true
+            minion.vm.provision "file", source: "saltstack/grains/grains.yaml", destination: "/tmp/salt/grains"
+            # WARN; SCP program that copies files into vm doesn't have SUDO capabilities
+            minion.vm.provision "shell" do |s|
+                s.inline = <<-SCRIPT
+                [ ! -d "/etc/salt" ] && mkdir "/etc/salt"
+                cp "/tmp/salt/grains" "/etc/salt/grains"
+                SCRIPT
+                s.privileged = true
+            end
+
+            minion.vm.provision :salt do |salt|
+                salt.minion_config = "saltstack/configurations/#{vmname}_conf.yaml"
+
+                # TODO; Proper setup would require key preseeding, but we're using automatic minion
+                # approval filtered on grains.
+
+                salt.install_type = "stable"
+                salt.verbose = true
+                salt.colorize = true
+                salt.bootstrap_options = "-D"
+                # TODO Run automatic provisioning (requires pre-seeded minions)
+                # salt.run_highstate = true
+            end
+        end
     end
 end

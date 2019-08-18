@@ -1,0 +1,4 @@
+# Auto-accept all minions whose grain "deployment" has the following values.
+# NOTE; One value per line!
+# 
+stage0

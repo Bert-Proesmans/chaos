@@ -1,0 +1,6 @@
+# Information used to automatically accept Salt minions on master.
+#
+# This file must be synced to ALL deployed minions at location
+# '/etc/salt/grains'
+
+deployment: stage0

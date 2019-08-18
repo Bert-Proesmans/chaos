@@ -1,6 +1,7 @@
 # Chaos
 
-Repository containing my home environment as code.
+Repository containing my home environment as code.  
+This repository is also intended as a guide for unexperienced Automation- and Deployment people.
 
 ## Why?
 
@@ -8,7 +9,7 @@ Why not?!
 
 All I have is one unprovisioned bare-metal server and spare time. This is a perfect learning opportunity
 for machine lifecycle management (or Metal-As-A-Service).  
-Ultimately I desire system that could install, configure and run my applications with zero to no manual effort from scratch.
+Ultimately I desire a system that could install, configure and run my applications _on demand_ with zero to no manual effort.
 
 ## Architecture design
 
